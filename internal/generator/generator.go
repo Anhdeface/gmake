@@ -116,6 +116,14 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 		builder.WriteString("\trm -f $(TARGET)\n")
 	}
 
+	// Custom Scripts
+	if len(config.Scripts) > 0 {
+		builder.WriteString("\n# --- Custom Scripts ---\n")
+		for scriptName, scriptCmd := range config.Scripts {
+			builder.WriteString(fmt.Sprintf("%s:\n\t%s\n\n", scriptName, scriptCmd))
+		}
+	}
+
 	// Write to file
 	return os.WriteFile(outputFilePath, []byte(builder.String()), 0644)
 }

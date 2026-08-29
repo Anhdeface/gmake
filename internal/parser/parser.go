@@ -21,6 +21,7 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 		Dependency: models.ConfigDependency{
 			ObjectDpdcy: false, // Default to false
 		},
+		Scripts: make(map[string]string),
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -74,6 +75,8 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 				if err := parseConfigDependency(config, key, val); err != nil {
 					return nil, fmt.Errorf("error in [config.dependency]: %w", err)
 				}
+			case "config.scripts":
+				config.Scripts[key] = val
 			default:
 				return nil, fmt.Errorf("unknown block: '[%s]'", currentBlock)
 			}

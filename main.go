@@ -44,7 +44,7 @@ func generateTemplate() {
 	err := os.WriteFile("build.gomake", []byte(template.ConfigTemplate), 0644)
 	if err != nil {
 		fmt.Printf("Error writing template: %v\n", err)
-		return
+		os.Exit(1)
 	}
 	fmt.Println("Successfully generated build.gomake template")
 }
@@ -53,7 +53,7 @@ func processAllConfigs() {
 	files, err := filepath.Glob("*.gomake")
 	if err != nil {
 		fmt.Printf("Error searching for .gomake files: %v\n", err)
-		return
+		os.Exit(1)
 	}
 
 	if len(files) == 0 {
@@ -62,6 +62,9 @@ func processAllConfigs() {
 	}
 
 	var wg sync.WaitGroup
+	var hasError bool
+	var mu sync.Mutex
+
 	for _, file := range files {
 		wg.Add(1)
 		go func(filename string) {
@@ -69,17 +72,25 @@ func processAllConfigs() {
 			err := transpile(filename)
 			if err != nil {
 				fmt.Printf("Error processing %s: %v\n", filename, err)
+				mu.Lock()
+				hasError = true
+				mu.Unlock()
 			}
 		}(file)
 	}
 
 	wg.Wait()
+	if hasError {
+		fmt.Println("Finished processing with errors.")
+		os.Exit(1)
+	}
 	fmt.Println("Finished processing all configurations.")
 }
 
 func processSingleConfig(filename string) {
 	if err := transpile(filename); err != nil {
 		fmt.Printf("Error processing %s: %v\n", filename, err)
+		os.Exit(1)
 	}
 }
 

@@ -2,34 +2,34 @@ package template
 
 const ConfigTemplate = `// ==========================================
 // Gomake Configuration Template
-// Dấu '//' được sử dụng để viết comment
+// Use '//' for comments
 // ==========================================
 
 [config.setup]
-// compiler: Trình biên dịch bạn muốn sử dụng (Ví dụ: gcc, clang, g++)
+// compiler: The compiler you want to use (e.g., gcc, clang, g++)
 compiler = 
 
-// flags: Các cờ biên dịch (Ví dụ: -Wall -Wextra -O2, -g)
+// flags: Compilation flags (e.g., -Wall -Wextra -O2, -g)
 flags = 
 
-// name: Tên dự án của bạn
+// name: The name of your project
 name = 
 [end]
 
 [config.dependency]
-// target: Đường dẫn hoặc tên file thực thi sẽ được tạo ra (Ví dụ: bin/my_program)
+// target: The path or name of the output executable (e.g., bin/my_program)
 target = 
 
-// sources: Các file mã nguồn (Ví dụ: src/*.c, src/main.c src/utils.c)
+// sources: Source code files (e.g., src/*.c, src/main.c src/utils.c)
 sources = 
 
-// includes: Thư mục chứa các file header (Ví dụ: include/*)
+// includes: Directories containing header files (e.g., include/*)
 includes = 
 
-// object.dpdcy: Tự động quản lý và link các file object (.o). Điền 'yes' để bật (Mặc định là tắt).
+// object.dpdcy: Automatically manage and link object (.o) files. Set to 'yes' to enable (disabled by default).
 object.dpdcy = 
 [end]
 
-// Dòng dưới đây báo hiệu kết thúc file cấu hình và tiến hành build
+// The line below signals the end of the configuration file and starts the build process
 ./gomake
 `

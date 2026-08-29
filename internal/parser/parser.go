@@ -59,7 +59,7 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 		if currentBlock != "" {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) != 2 {
-				continue // skip invalid lines
+				return nil, fmt.Errorf("invalid format on line: '%s', expected 'key = value'", line)
 			}
 			
 			key := strings.TrimSpace(strings.ToLower(parts[0]))
@@ -67,9 +67,15 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 
 			switch currentBlock {
 			case "config.setup":
-				parseConfigSetup(config, key, val)
+				if err := parseConfigSetup(config, key, val); err != nil {
+					return nil, fmt.Errorf("error in [config.setup]: %w", err)
+				}
 			case "config.dependency":
-				parseConfigDependency(config, key, val)
+				if err := parseConfigDependency(config, key, val); err != nil {
+					return nil, fmt.Errorf("error in [config.dependency]: %w", err)
+				}
+			default:
+				return nil, fmt.Errorf("unknown block: '[%s]'", currentBlock)
 			}
 		}
 	}
@@ -81,7 +87,7 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 	return config, nil
 }
 
-func parseConfigSetup(config *models.GomakeConfig, key, val string) {
+func parseConfigSetup(config *models.GomakeConfig, key, val string) error {
 	switch key {
 	case "compiler":
 		config.Setup.Compiler = val
@@ -89,10 +95,13 @@ func parseConfigSetup(config *models.GomakeConfig, key, val string) {
 		config.Setup.Flags = val
 	case "name":
 		config.Setup.Name = val
+	default:
+		return fmt.Errorf("unknown variable '%s'", key)
 	}
+	return nil
 }
 
-func parseConfigDependency(config *models.GomakeConfig, key, val string) {
+func parseConfigDependency(config *models.GomakeConfig, key, val string) error {
 	switch key {
 	case "target":
 		config.Dependency.Target = val
@@ -110,10 +119,16 @@ func parseConfigDependency(config *models.GomakeConfig, key, val string) {
 			config.Dependency.Includes = append(config.Dependency.Includes, inc)
 		}
 	case "object.dpdcy":
-		if strings.ToLower(val) == "yes" || strings.ToLower(val) == "true" {
+		valLower := strings.ToLower(val)
+		if valLower == "yes" || valLower == "true" {
 			config.Dependency.ObjectDpdcy = true
-		} else {
+		} else if valLower == "no" || valLower == "false" || valLower == "" {
 			config.Dependency.ObjectDpdcy = false
+		} else {
+			return fmt.Errorf("invalid value '%s' for object.dpdcy, expected 'yes' or 'no'", val)
 		}
+	default:
+		return fmt.Errorf("unknown variable '%s'", key)
 	}
+	return nil
 }

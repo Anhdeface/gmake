@@ -18,11 +18,9 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 	defer file.Close()
 
 	config := &models.GomakeConfig{
-		Dependency: models.ConfigDependency{
-			ObjectDpdcy: false, // Default to false
-			BuildType:   "executable",
-		},
-		Scripts: make(map[string]string),
+		Setups:       make(map[string]*models.ConfigSetup),
+		Dependencies: make(map[string]*models.ConfigDependency),
+		Scripts:      make(map[string]string),
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -59,6 +57,17 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 			continue
 		}
 
+		if currentBlock == "const" {
+			parts := strings.Split(line, ",")
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					config.Constants = append(config.Constants, p)
+				}
+			}
+			continue
+		}
+
 		// Parse key-value pairs
 		if currentBlock != "" {
 			parts := strings.SplitN(line, "=", 2)
@@ -71,21 +80,39 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 			}
 			val := strings.TrimSpace(parts[1])
 
-			switch currentBlock {
-			case "config.setup":
-				if err := parseConfigSetup(config, key, val); err != nil {
-					return nil, fmt.Errorf("error in [config.setup]: %w", err)
+			if currentBlock == "config.setup" || currentBlock == "config.dependency" {
+				return nil, fmt.Errorf("missing suffix, e.g., [%s.app]", currentBlock)
+			} else if strings.HasPrefix(currentBlock, "config.setup.") {
+				suffix := strings.TrimPrefix(currentBlock, "config.setup.")
+				if !contains(config.Constants, suffix) {
+					return nil, fmt.Errorf("suffix '%s' is not declared in [const]", suffix)
 				}
-			case "config.dependency":
-				if err := parseConfigDependency(config, key, val); err != nil {
-					return nil, fmt.Errorf("error in [config.dependency]: %w", err)
+				if config.Setups[suffix] == nil {
+					config.Setups[suffix] = &models.ConfigSetup{}
 				}
-			case "config.scripts":
+				if err := parseConfigSetup(config.Setups[suffix], key, val); err != nil {
+					return nil, fmt.Errorf("error in [%s]: %w", currentBlock, err)
+				}
+			} else if strings.HasPrefix(currentBlock, "config.dependency.") {
+				suffix := strings.TrimPrefix(currentBlock, "config.dependency.")
+				if !contains(config.Constants, suffix) {
+					return nil, fmt.Errorf("suffix '%s' is not declared in [const]", suffix)
+				}
+				if config.Dependencies[suffix] == nil {
+					config.Dependencies[suffix] = &models.ConfigDependency{
+						ObjectDpdcy: false,
+						BuildType:   "executable",
+					}
+				}
+				if err := parseConfigDependency(config.Dependencies[suffix], key, val); err != nil {
+					return nil, fmt.Errorf("error in [%s]: %w", currentBlock, err)
+				}
+			} else if currentBlock == "config.scripts" {
 				if key == "" {
 					return nil, fmt.Errorf("script name cannot be empty")
 				}
 				config.Scripts[key] = val
-			default:
+			} else {
 				return nil, fmt.Errorf("unknown block: '[%s]'", currentBlock)
 			}
 		}
@@ -98,28 +125,37 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 	return config, nil
 }
 
-func parseConfigSetup(config *models.GomakeConfig, key, val string) error {
+func contains(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+func parseConfigSetup(setup *models.ConfigSetup, key, val string) error {
 	switch key {
 	case "compiler":
-		config.Setup.Compiler = val
+		setup.Compiler = val
 	case "flags":
-		config.Setup.Flags = val
+		setup.Flags = val
 	case "name":
-		config.Setup.Name = val
+		setup.Name = val
 	default:
 		return fmt.Errorf("unknown variable '%s'", key)
 	}
 	return nil
 }
 
-func parseConfigDependency(config *models.GomakeConfig, key, val string) error {
+func parseConfigDependency(dep *models.ConfigDependency, key, val string) error {
 	switch key {
 	case "target":
-		config.Dependency.Target = val
+		dep.Target = val
 	case "sources":
 		// split by space for multiple sources
 		sources := strings.Fields(val)
-		config.Dependency.Sources = append(config.Dependency.Sources, sources...)
+		dep.Sources = append(dep.Sources, sources...)
 	case "includes":
 		includes := strings.Fields(val)
 		// Process includes: strip trailing /* if any
@@ -127,26 +163,26 @@ func parseConfigDependency(config *models.GomakeConfig, key, val string) error {
 			if strings.HasSuffix(inc, "/*") {
 				inc = inc[:len(inc)-2]
 			}
-			config.Dependency.Includes = append(config.Dependency.Includes, inc)
+			dep.Includes = append(dep.Includes, inc)
 		}
 	case "object.dpdcy":
 		valLower := strings.ToLower(val)
 		if valLower == "yes" || valLower == "true" {
-			config.Dependency.ObjectDpdcy = true
+			dep.ObjectDpdcy = true
 		} else if valLower == "no" || valLower == "false" || valLower == "" {
-			config.Dependency.ObjectDpdcy = false
+			dep.ObjectDpdcy = false
 		} else {
 			return fmt.Errorf("invalid value '%s' for object.dpdcy, expected 'yes' or 'no'", val)
 		}
 	case "build.type":
 		valLower := strings.ToLower(val)
-		if valLower == "executable" || valLower == "static" || valLower == "shared" {
-			config.Dependency.BuildType = valLower
+		if valLower == "executable" || valLower == "static" || valLower == "shared" || valLower == "" {
+			if valLower == "" { dep.BuildType = "executable" } else { dep.BuildType = valLower }
 		} else {
 			return fmt.Errorf("invalid build.type '%s', expected 'executable', 'static', or 'shared'", val)
 		}
 	case "libs":
-		config.Dependency.Libs = val
+		dep.Libs = val
 	default:
 		return fmt.Errorf("unknown variable '%s'", key)
 	}

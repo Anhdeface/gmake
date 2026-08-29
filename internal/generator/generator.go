@@ -95,11 +95,25 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	}
 
 	// Link command
-	if config.Dependency.ObjectDpdcy {
-		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^\n\n")
-	} else {
-		// Just compile directly from sources if ObjectDpdcy is disabled
-		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)\n\n")
+	switch config.Dependency.BuildType {
+	case "static":
+		if config.Dependency.ObjectDpdcy {
+			builder.WriteString("\tar rcs $@ $^\n\n")
+		} else {
+			builder.WriteString("\tar rcs $@ $(SRCS)\n\n")
+		}
+	case "shared":
+		if config.Dependency.ObjectDpdcy {
+			builder.WriteString("\t$(CC) -shared $(CFLAGS) $(INCLUDES) -o $@ $^\n\n")
+		} else {
+			builder.WriteString("\t$(CC) -shared $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)\n\n")
+		}
+	default: // "executable"
+		if config.Dependency.ObjectDpdcy {
+			builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^\n\n")
+		} else {
+			builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)\n\n")
+		}
 	}
 
 	// Object compilation rule (only if ObjectDpdcy is true)

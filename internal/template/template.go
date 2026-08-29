@@ -1,29 +1,32 @@
 package template
 
-const ConfigTemplate = `// ==========================================
-// Gomake Configuration Template
-// Use '//' for comments
-// ==========================================
+import (
+	"fmt"
+	"os"
+)
 
-[config.setup]
-// compiler: The compiler you want to use (e.g., gcc, clang, g++)
-compiler = 
+const ConfigTemplate = `[const]
+app, test
 
-// flags: Compilation flags (e.g., -Wall -Wextra -O2, -g)
+[config.setup.app]
+// compiler: The compiler to use. E.g., gcc, g++, clang, etc. Defaults to 'gcc'.
+compiler = gcc
+
+// flags: Compilation flags. E.g., -Wall, -O2, -g.
 flags = 
 
-// name: The name of your project
-name = 
+// name: The default target executable/library name if 'target' in [config.dependency] is not set.
+name = app
 [end]
 
-[config.dependency]
-// target: The path or name of the output executable (e.g., bin/my_program)
+[config.dependency.app]
+// target: The specific output file name (overrides 'name' in setup).
 target = 
 
-// sources: Source code files (e.g., src/*.c, src/main.c src/utils.c)
+// sources: Source files to compile. Use space to separate multiple files. E.g., src/*.c src/*.cpp.
 sources = 
 
-// includes: Directories containing header files (e.g., include/*)
+// includes: Include directories. E.g., include/ libs/
 includes = 
 
 // object.dpdcy: Automatically manage and link object (.o) files. Set to 'yes' to enable (disabled by default).
@@ -36,11 +39,33 @@ build.type =
 libs = 
 [end]
 
-[config.scripts]
-// Define custom scripts here (e.g., run, test, install)
-// Example: run = ./bin/my_program --debug
+[config.setup.test]
+compiler = gcc
+flags = -g -Wall
+name = test_runner
 [end]
 
-// The line below signals the end of the configuration file and starts the build process
+[config.dependency.test]
+sources = test/*.c
+object.dpdcy = yes
+build.type = executable
+[end]
+
+[config.scripts]
+run = ./app
+[end]
+
 ./gomake
 `
+
+func GenerateConfig(filepath string) error {
+	if _, err := os.Stat(filepath); err == nil {
+		return fmt.Errorf("file %s already exists", filepath)
+	}
+
+	err := os.WriteFile(filepath, []byte(ConfigTemplate), 0644)
+	if err != nil {
+		return fmt.Errorf("could not create template: %w", err)
+	}
+	return nil
+}

@@ -66,7 +66,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	}
 
 	if config.Dependency.ObjectDpdcy && len(processedSources) > 0 {
-		builder.WriteString("OBJS = $(addsuffix .o, $(basename $(SRCS)))\n")
+		builder.WriteString("OBJS = $(addsuffix .o, $(SRCS))\n")
 	}
 	builder.WriteString("\n")
 
@@ -125,9 +125,9 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 
 	// Object compilation rule (only if ObjectDpdcy is true)
 	if config.Dependency.ObjectDpdcy {
-		builder.WriteString("%.o: %.c\n")
+		builder.WriteString("%.c.o: %.c\n")
 		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@\n\n")
-		builder.WriteString("%.o: %.cpp\n")
+		builder.WriteString("%.cpp.o: %.cpp\n")
 		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@\n\n")
 	}
 

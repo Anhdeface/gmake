@@ -28,6 +28,9 @@ includes =
 
 // object.dpdcy: Automatically manage and link object (.o) files. Set to 'yes' to enable (disabled by default).
 object.dpdcy = 
+
+// build.type: The type of output to build. Expected 'executable', 'static' (e.g., .a), or 'shared' (e.g., .so). Defaults to 'executable'.
+build.type = 
 [end]
 
 [config.scripts]

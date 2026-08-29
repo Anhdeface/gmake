@@ -20,6 +20,7 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 	config := &models.GomakeConfig{
 		Dependency: models.ConfigDependency{
 			ObjectDpdcy: false, // Default to false
+			BuildType:   "executable",
 		},
 		Scripts: make(map[string]string),
 	}
@@ -136,6 +137,13 @@ func parseConfigDependency(config *models.GomakeConfig, key, val string) error {
 			config.Dependency.ObjectDpdcy = false
 		} else {
 			return fmt.Errorf("invalid value '%s' for object.dpdcy, expected 'yes' or 'no'", val)
+		}
+	case "build.type":
+		valLower := strings.ToLower(val)
+		if valLower == "executable" || valLower == "static" || valLower == "shared" {
+			config.Dependency.BuildType = valLower
+		} else {
+			return fmt.Errorf("invalid build.type '%s', expected 'executable', 'static', or 'shared'", val)
 		}
 	default:
 		return fmt.Errorf("unknown variable '%s'", key)

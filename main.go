@@ -25,7 +25,7 @@ func main() {
 	case "all":
 		processAllConfigs()
 	case "version":
-		fmt.Println("gomake version 0.1.3-beta")
+		fmt.Println("gomake version 0.2.0-beta")
 	default:
 		processSingleConfig(arg)
 	}

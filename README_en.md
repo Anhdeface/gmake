@@ -1,21 +1,21 @@
 # Gomake
 
-**Version: 0.1.3 (Beta)**
+**Version: 0.2.0 (Beta)**
 
 [Vietnamese](README.md) | English
 
-Gomake is a transpiler written in Go that parses simplified configuration files (`.gomake`) and generates standard GNU Makefiles.
+Gomake is a transpiler written in Go that parses custom configuration files (`.gomake`) and generates standard GNU Makefiles. It features multi-target architecture support, robust auto-dependency tracking for headers, and flexible library management.
 
 ## Software Architecture
 
-The project is structured into three main modules:
-- **Parser (`internal/parser`)**: Reads `.gomake` files line by line, excludes inline comments starting with `//`, and extracts keys and values from the `[config.setup]` and `[config.dependency]` blocks. The parsing execution halts upon encountering the `./gomake` EOF marker.
-- **Generator (`internal/generator`)**: Consumes the parsed data structure and outputs a formatted Makefile. The generator handles directory modifications (e.g., prefixing `includes` with `-I`) and sets up object file linking rules via the `$(OBJS)` variable.
-- **CLI Router (`main.go`)**: Manages command-line arguments, orchestrates concurrent file processing using `sync.WaitGroup`, and handles the template generation routine.
+The project consists of three main module components:
+- **Parser (`internal/parser`)**: Parses the `.gomake` file line by line. Flexibly manages multi-target configurations via the `[const]` block, preserves whitespace and script commands, and stops only upon encountering the `./gomake` EOF marker.
+- **Generator (`internal/generator`)**: Consumes the parsed data structures and generates Makefiles. It optimizes multi-target builds by preventing object file conflicts, auto-injects `-MMD -MP` flags for precise `.h` header tracking, and neatly organizes Custom Scripts.
+- **CLI Router (`main.go`)**: Handles command routing, manages multi-threading via `sync.WaitGroup` for bulk processing, and provides a command to generate template configurations.
 
 ## Installation
 
-Execute the following command to build the binary from source:
+Run the following command to build the binary from source:
 
 ```sh
 go build -o gomake main.go
@@ -23,52 +23,130 @@ go build -o gomake main.go
 
 ## Usage
 
-### 1. Configuration Template Generation
-
-This command outputs a `build.gomake` file containing empty parameters and technical comments:
-
+### 1. Generate a Template Configuration
+Creates a `build.gomake` file containing boilerplate parameters (including a multi-target layout for `app` and `test`):
 ```sh
 ./gomake genconfig
 ```
 
-### 2. Single File Transpilation
-
-Compiles a specific `.gomake` file. The output will be written to a new file appended with the `.makefile` extension (e.g., `filename.gomake.makefile`):
-
+### 2. Transpile a Single Configuration
+Compiles a specific `.gomake` file. The output will be saved to a new file appended with `.makefile` (e.g., `filename.gomake.makefile`):
 ```sh
 ./gomake <filename.gomake>
 ```
 
-### 3. Concurrent Batch Processing
-
-Triggers Goroutines to locate and transpile all files with the `.gomake` extension in the current working directory concurrently:
-
+### 3. Bulk Transpilation
+Fires up Goroutines to find and transpile all `.gomake` files in the current directory concurrently:
 ```sh
 ./gomake all
 ```
 
-## Configuration Specification
+## Configuration Specification (Gomake 0.2.0 Features)
 
-The format architecture utilizes logical blocks delimited by square brackets. The parser strictly preserves parameter integrity (e.g., compiler flags are exact strings without implicit additions).
+The file format uses logical blocks enclosed in square brackets.
+The parser respects your configurations and is completely transparent (it does not silently inject optimization or compiler flags like `-fPIC` or `-O2`).
 
-- `[config.setup]`: Stores compiler designation, compilation flags, and the project name.
-- `[config.dependency]`: Stores target output definitions, source paths (supporting wildcard globbing), include directories, and object linking states (`object.dpdcy`).
-- `//`: Denotes a comment string.
-- `./gomake`: Denotes the configuration EOF marker.
+- `[const]`: Declares a list of target names on a single line (comma-separated). It does not require an `[end]` tag. E.g., `app, test`.
+- `[config.setup.TARGET]`: Configures the compiler, compilation flags, and the default project name. The `TARGET` suffix must match a name declared in `[const]`.
+- `[config.dependency.TARGET]`:
+  - `target`: The target file path.
+  - `sources`: Source code files (supports `*` wildcards).
+  - `includes`: Header include directories.
+  - `libs`: Linker flags and libraries (e.g., `-lm -lpthread`). These are automatically appended at the end of the linking command.
+  - `object.dpdcy`: Manages object file linking. The generator fully supports both C and C++ (`.c` and `.cpp`), isolates object files across targets to prevent collisions, and enables **Auto-header tracking** automatically.
+  - `build.type`: Select the target output type (`executable`, `static`, or `shared`).
+- `[config.scripts]`: Declare custom script commands (e.g., `run = ./app`). These are generated as `.PHONY` targets in the Makefile.
+- `./gomake`: EOF marker.
 
-Example `.gomake` file format:
+### Example `.gomake` Configuration File:
 
 ```
-[config.setup]
+[const]
+app, test
+
+[config.setup.app]
 compiler = gcc
-flags = -Wall -Wextra -O2
+flags = -Wall -O2
 name = my_app
 [end]
-[config.dependency]
-target = bin/program
-sources = src/main.c src/driver.c
-includes = include/*
+
+[config.dependency.app]
+sources = src/*.c src/*.cpp
+includes = include/
 object.dpdcy = yes
+build.type = executable
+libs = -lm
 [end]
+
+[config.scripts]
+run = ./my_app
+[end]
+
 ./gomake
+```
+
+### Automatically Generated GNU Makefile:
+Based on the template created by the `genconfig` command, Gomake processes it and generates a professional-grade Makefile with multi-target capabilities and Auto-header tracking (`-MMD -MP`) as follows:
+
+```makefile
+# ==========================================
+# Generated by gomake
+# Targets: app, test
+# ==========================================
+
+TARGETS = $(TARGET_app) $(TARGET_test)
+
+.PHONY: all clean app test run
+
+all: $(TARGETS)
+
+app: $(TARGET_app)
+test: $(TARGET_test)
+
+# ==========================================
+# Target: app
+# ==========================================
+CC_app = gcc
+
+
+TARGET_app = app
+
+$(TARGET_app): $(SRCS_app)
+	$(CC_app) $(CFLAGS_app) $(INCLUDES_app) -o $@ $(SRCS_app)
+
+# ==========================================
+# Target: test
+# ==========================================
+CC_test = gcc
+CFLAGS_test = -g -Wall
+
+SRCS_test = $(wildcard test/*.c)
+OBJS_test = $(addsuffix .test.o, $(SRCS_test))
+DEPS_test = $(OBJS_test:.o=.d)
+
+TARGET_test = test_runner
+
+$(TARGET_test): $(OBJS_test)
+	$(CC_test) $(CFLAGS_test) $(INCLUDES_test) -o $@ $^
+
+%.c.test.o: %.c
+	$(CC_test) $(CFLAGS_test) $(INCLUDES_test) -MMD -MP -c $< -o $@
+
+%.cpp.test.o: %.cpp
+	$(CC_test) $(CFLAGS_test) $(INCLUDES_test) -MMD -MP -c $< -o $@
+
+-include $(DEPS_test)
+
+# ==========================================
+# Clean Rule
+# ==========================================
+clean:
+	rm -f $(OBJS_test) $(DEPS_test) $(TARGETS)
+
+# ==========================================
+# Custom Scripts
+# ==========================================
+run:
+	./app
+
 ```

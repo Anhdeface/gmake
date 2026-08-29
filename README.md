@@ -1,16 +1,16 @@
 # Gomake
 
-**Version: 0.1.3 (Beta)**
+**Version: 0.2.0 (Beta)**
 
 Vietnamese | [English](README_en.md)
 
-Gomake là một trình biên dịch chuyển đổi (transpiler) được viết bằng ngôn ngữ Go, có chức năng phân tích các tệp cấu hình tùy chỉnh (`.gomake`) và sinh ra tệp GNU Makefile tiêu chuẩn.
+Gomake là một trình biên dịch chuyển đổi (transpiler) được viết bằng ngôn ngữ Go, có chức năng phân tích các tệp cấu hình tùy chỉnh (`.gomake`) và sinh ra tệp GNU Makefile tiêu chuẩn. Nó hỗ trợ cấu trúc dự án đa mục tiêu (multi-targets), theo dõi phụ thuộc tự động (auto-dependency tracking), và quản lý thư viện linh hoạt.
 
 ## Kiến trúc phần mềm
 
 Dự án bao gồm ba thành phần module chính:
-- **Parser (`internal/parser`)**: Phân tích cú pháp tệp `.gomake` theo từng dòng, bỏ qua các đoạn văn bản bắt đầu bằng `//`, trích xuất các khóa và giá trị từ khối `[config.setup]` và `[config.dependency]`. Quá trình phân tích sẽ kết thúc ngay khi gặp cờ báo EOF định nghĩa là `./gomake`.
-- **Generator (`internal/generator`)**: Tiếp nhận cấu trúc dữ liệu đã phân tích và tạo tệp Makefile. Trình sinh mã thực hiện nối cờ `-I` cho các thư mục `includes` và tự động thiết lập quy tắc liên kết tệp đối tượng (object file linking) thông qua biến `$(OBJS)`.
+- **Parser (`internal/parser`)**: Phân tích cú pháp tệp `.gomake` theo từng dòng. Quản lý linh hoạt cấu trúc đa mục tiêu thông qua khối `[const]`, bảo lưu khoảng trắng, và chỉ dừng lại khi gặp từ khóa kết thúc `./gomake`.
+- **Generator (`internal/generator`)**: Tiếp nhận cấu trúc dữ liệu và sinh Makefile. Tối ưu hóa việc không xung đột tệp object (Object files conflict) trong dự án đa mục tiêu, tự động nhúng cờ `-MMD -MP` để theo dõi tệp header `.h` thay đổi, và tổ chức gọn gàng các Custom Scripts.
 - **CLI Router (`main.go`)**: Chịu trách nhiệm phân luồng lệnh thực thi, quản lý quy trình tạo tệp đa luồng (multi-threading) thông qua `sync.WaitGroup` và cung cấp lệnh khởi tạo cấu hình mẫu.
 
 ## Hướng dẫn cài đặt
@@ -24,51 +24,129 @@ go build -o gomake main.go
 ## Hướng dẫn sử dụng
 
 ### 1. Sinh tệp cấu hình mẫu
-
-Lệnh sau sẽ tạo ra tệp `build.gomake` chứa các trường tham số trống kèm chú thích giải thích:
-
+Tạo ra tệp `build.gomake` chứa các trường tham số mẫu (bao gồm thiết lập đa mục tiêu `app` và `test`):
 ```sh
 ./gomake genconfig
 ```
 
 ### 2. Dịch cấu hình đơn lẻ
-
-Biên dịch một tệp `.gomake` cụ thể. Đầu ra sẽ được lưu vào tệp mới với hậu tố `.makefile` (ví dụ: `filename.gomake.makefile`):
-
+Biên dịch tệp `.gomake` cụ thể. Đầu ra được lưu với hậu tố `.makefile` (ví dụ: `filename.gomake.makefile`):
 ```sh
 ./gomake <filename.gomake>
 ```
 
 ### 3. Dịch cấu hình hàng loạt
-
-Kích hoạt Goroutines để tìm kiếm và dịch toàn bộ các tệp có đuôi `.gomake` trong thư mục hiện tại theo cơ chế song song:
-
+Tìm kiếm và dịch toàn bộ các tệp `.gomake` trong thư mục hiện tại theo cơ chế song song (Goroutines):
 ```sh
 ./gomake all
 ```
 
-## Đặc tả cấu hình
+## Đặc tả cấu hình (Tính năng Gomake 0.2.0)
 
-Cấu trúc định dạng tệp sử dụng các khối logic đặt trong cặp ngoặc vuông. Trình phân tích bảo toàn tính nguyên bản của các tham số (không tự động can thiệp thêm cờ tối ưu như `-O2` nếu không có sẵn).
+Cấu trúc định dạng tệp sử dụng các khối logic đặt trong cặp ngoặc vuông.
+Trình phân tích tôn trọng tối đa cấu hình của người dùng, minh bạch tuyệt đối (không ngầm thêm cờ như `-fPIC` hay `-O2`).
 
-- `[config.setup]`: Lưu trữ cấu hình trình biên dịch, cờ biên dịch và tên dự án.
-- `[config.dependency]`: Lưu trữ cấu hình tệp đích, đường dẫn mã nguồn (hỗ trợ mẫu tìm kiếm đại diện wildcard), đường dẫn thư viện (includes) và thiết lập cơ chế liên kết đối tượng (`object.dpdcy`).
-- `//`: Chuỗi biểu thị nội dung chú thích.
+- `[const]`: Khai báo danh sách các mục tiêu (target) trên một dòng (cách nhau bởi dấu phẩy). Không cần dùng thẻ `[end]`. Ví dụ: `app, test`.
+- `[config.setup.TARGET]`: Cấu hình trình biên dịch, cờ biên dịch và tên mặc định của dự án. Hậu tố `TARGET` phải khớp với một tên đã khai báo ở `[const]`.
+- `[config.dependency.TARGET]`:
+  - `target`: Đường dẫn tệp đích.
+  - `sources`: Các tệp mã nguồn (hỗ trợ wildcard `*`).
+  - `includes`: Các thư mục Header.
+  - `libs`: Các cờ liên kết thư viện (ví dụ: `-lm -lpthread`). Được tự động chèn vào cuối lệnh liên kết.
+  - `object.dpdcy`: Quản lý liên kết tệp đối tượng. Trình sinh mã sẽ tự động hỗ trợ cho cả C và C++ (`.c` và `.cpp`), ngăn chặn xung đột object file. Đồng thời tự động kích hoạt tính năng **Auto-header tracking** (theo dõi thay đổi của tệp `.h`).
+  - `build.type`: Chọn loại tệp đích cần build (`executable`, `static`, hoặc `shared`).
+- `[config.scripts]`: Khai báo các lệnh script tùy biến (ví dụ `run = ./app`). Sẽ được sinh ra dưới dạng `.PHONY` target trong Makefile.
 - `./gomake`: Ký tự đánh dấu kết thúc tệp cấu hình.
 
-Mẫu định dạng tệp `.gomake`:
+### Ví dụ tệp cấu hình `.gomake`:
 
 ```
-[config.setup]
+[const]
+app, test
+
+[config.setup.app]
 compiler = gcc
-flags = -Wall -Wextra -O2
+flags = -Wall -O2
 name = my_app
 [end]
-[config.dependency]
-target = bin/program
-sources = src/main.c src/driver.c
-includes = include/*
+
+[config.dependency.app]
+sources = src/*.c src/*.cpp
+includes = include/
 object.dpdcy = yes
+build.type = executable
+libs = -lm
 [end]
+
+[config.scripts]
+run = ./my_app
+[end]
+
 ./gomake
+```
+
+### GNU Makefile được sinh ra tự động:
+Dựa trên tệp mẫu được tạo bởi lệnh `genconfig`, Gomake sẽ phân tích và tự động sinh ra tệp Makefile chuyên nghiệp với khả năng đa mục tiêu và bám đuôi Header (`-MMD -MP`) như sau:
+
+```makefile
+# ==========================================
+# Generated by gomake
+# Targets: app, test
+# ==========================================
+
+TARGETS = $(TARGET_app) $(TARGET_test)
+
+.PHONY: all clean app test run
+
+all: $(TARGETS)
+
+app: $(TARGET_app)
+test: $(TARGET_test)
+
+# ==========================================
+# Target: app
+# ==========================================
+CC_app = gcc
+
+
+TARGET_app = app
+
+$(TARGET_app): $(SRCS_app)
+	$(CC_app) $(CFLAGS_app) $(INCLUDES_app) -o $@ $(SRCS_app)
+
+# ==========================================
+# Target: test
+# ==========================================
+CC_test = gcc
+CFLAGS_test = -g -Wall
+
+SRCS_test = $(wildcard test/*.c)
+OBJS_test = $(addsuffix .test.o, $(SRCS_test))
+DEPS_test = $(OBJS_test:.o=.d)
+
+TARGET_test = test_runner
+
+$(TARGET_test): $(OBJS_test)
+	$(CC_test) $(CFLAGS_test) $(INCLUDES_test) -o $@ $^
+
+%.c.test.o: %.c
+	$(CC_test) $(CFLAGS_test) $(INCLUDES_test) -MMD -MP -c $< -o $@
+
+%.cpp.test.o: %.cpp
+	$(CC_test) $(CFLAGS_test) $(INCLUDES_test) -MMD -MP -c $< -o $@
+
+-include $(DEPS_test)
+
+# ==========================================
+# Clean Rule
+# ==========================================
+clean:
+	rm -f $(OBJS_test) $(DEPS_test) $(TARGETS)
+
+# ==========================================
+# Custom Scripts
+# ==========================================
+run:
+	./app
+
 ```

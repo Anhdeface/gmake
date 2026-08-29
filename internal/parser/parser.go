@@ -30,9 +30,11 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Handle comments
-		if idx := strings.Index(line, "//"); idx != -1 {
-			line = line[:idx]
+		// Handle comments (do not strip comments inside config.scripts block to preserve commands like curl //)
+		if currentBlock != "config.scripts" {
+			if idx := strings.Index(line, "//"); idx != -1 {
+				line = line[:idx]
+			}
 		}
 		
 		line = strings.TrimSpace(line)
@@ -62,8 +64,10 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 			if len(parts) != 2 {
 				return nil, fmt.Errorf("invalid format on line: '%s', expected 'key = value'", line)
 			}
-			
-			key := strings.TrimSpace(strings.ToLower(parts[0]))
+			key := strings.TrimSpace(parts[0])
+			if currentBlock != "config.scripts" {
+				key = strings.ToLower(key)
+			}
 			val := strings.TrimSpace(parts[1])
 
 			switch currentBlock {
@@ -76,6 +80,9 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 					return nil, fmt.Errorf("error in [config.dependency]: %w", err)
 				}
 			case "config.scripts":
+				if key == "" {
+					return nil, fmt.Errorf("script name cannot be empty")
+				}
 				config.Scripts[key] = val
 			default:
 				return nil, fmt.Errorf("unknown block: '[%s]'", currentBlock)

@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/Anhdeface/gmake/internal/models"
@@ -114,6 +115,27 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 		builder.WriteString("\trm -f $(OBJS) $(TARGET)\n")
 	} else {
 		builder.WriteString("\trm -f $(TARGET)\n")
+	}
+
+	// Custom Scripts
+	if len(config.Scripts) > 0 {
+		var scriptNames []string
+		for scriptName := range config.Scripts {
+			if scriptName == "all" || scriptName == "clean" || scriptName == targetName {
+				return fmt.Errorf("invalid script name '%s': conflicts with built-in target", scriptName)
+			}
+			scriptNames = append(scriptNames, scriptName)
+		}
+
+		if len(scriptNames) > 0 {
+			sort.Strings(scriptNames)
+			builder.WriteString("\n# --- Custom Scripts ---\n")
+			builder.WriteString(fmt.Sprintf(".PHONY: %s\n\n", strings.Join(scriptNames, " ")))
+			for _, scriptName := range scriptNames {
+				scriptCmd := config.Scripts[scriptName]
+				builder.WriteString(fmt.Sprintf("%s:\n\t%s\n\n", scriptName, scriptCmd))
+			}
+		}
 	}
 
 	// Write to file

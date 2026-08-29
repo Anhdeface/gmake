@@ -16,4 +16,5 @@ type ConfigDependency struct {
 type GomakeConfig struct {
 	Setup      ConfigSetup
 	Dependency ConfigDependency
+	Scripts    map[string]string
 }

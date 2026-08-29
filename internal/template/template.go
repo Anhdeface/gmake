@@ -30,6 +30,11 @@ includes =
 object.dpdcy = 
 [end]
 
+[config.scripts]
+// Define custom scripts here (e.g., run, test, install)
+// Example: run = ./bin/my_program --debug
+[end]
+
 // The line below signals the end of the configuration file and starts the build process
 ./gomake
 `

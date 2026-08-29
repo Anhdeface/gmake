@@ -5,7 +5,7 @@ const ConfigTemplate = `// ==========================================
 // Dấu '//' được sử dụng để viết comment
 // ==========================================
 
-[config.name]
+[config.setup]
 // compiler: Trình biên dịch bạn muốn sử dụng (Ví dụ: gcc, clang, g++)
 compiler = 
 
@@ -26,8 +26,8 @@ sources =
 // includes: Thư mục chứa các file header (Ví dụ: include/*)
 includes = 
 
-// o.fix: Tự động quản lý và link các file object (.o). Điền 'yes' hoặc để trống (Mặc định hệ thống luôn tự động làm việc này).
-o.fix = 
+// object.dpdcy: Tự động quản lý và link các file object (.o). Điền 'yes' để bật (Mặc định là tắt).
+object.dpdcy = 
 [end]
 
 // Dòng dưới đây báo hiệu kết thúc file cấu hình và tiến hành build

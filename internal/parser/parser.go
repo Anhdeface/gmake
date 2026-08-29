@@ -19,7 +19,7 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 
 	config := &models.GomakeConfig{
 		Dependency: models.ConfigDependency{
-			OFix: true, // Default to true
+			ObjectDpdcy: false, // Default to false
 		},
 	}
 
@@ -66,8 +66,8 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 			val := strings.TrimSpace(parts[1])
 
 			switch currentBlock {
-			case "config.name":
-				parseConfigName(config, key, val)
+			case "config.setup":
+				parseConfigSetup(config, key, val)
 			case "config.dependency":
 				parseConfigDependency(config, key, val)
 			}
@@ -81,14 +81,14 @@ func ParseConfig(filepath string) (*models.GomakeConfig, error) {
 	return config, nil
 }
 
-func parseConfigName(config *models.GomakeConfig, key, val string) {
+func parseConfigSetup(config *models.GomakeConfig, key, val string) {
 	switch key {
 	case "compiler":
-		config.Name.Compiler = val
+		config.Setup.Compiler = val
 	case "flags":
-		config.Name.Flags = val
+		config.Setup.Flags = val
 	case "name":
-		config.Name.Name = val
+		config.Setup.Name = val
 	}
 }
 
@@ -109,11 +109,11 @@ func parseConfigDependency(config *models.GomakeConfig, key, val string) {
 			}
 			config.Dependency.Includes = append(config.Dependency.Includes, inc)
 		}
-	case "o.fix":
-		if strings.ToLower(val) == "no" || strings.ToLower(val) == "false" {
-			config.Dependency.OFix = false
+	case "object.dpdcy":
+		if strings.ToLower(val) == "yes" || strings.ToLower(val) == "true" {
+			config.Dependency.ObjectDpdcy = true
 		} else {
-			config.Dependency.OFix = true
+			config.Dependency.ObjectDpdcy = false
 		}
 	}
 }

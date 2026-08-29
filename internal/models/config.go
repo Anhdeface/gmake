@@ -1,19 +1,19 @@
 package models
 
-type ConfigName struct {
+type ConfigSetup struct {
 	Compiler string
 	Flags    string
 	Name     string
 }
 
 type ConfigDependency struct {
-	Target   string
-	Sources  []string
-	Includes []string
-	OFix     bool
+	Target      string
+	Sources     []string
+	Includes    []string
+	ObjectDpdcy bool
 }
 
 type GomakeConfig struct {
-	Name       ConfigName
+	Setup      ConfigSetup
 	Dependency ConfigDependency
 }

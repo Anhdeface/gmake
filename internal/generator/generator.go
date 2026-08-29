@@ -18,17 +18,17 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	if config.Dependency.Target != "" {
 		builder.WriteString(fmt.Sprintf("# Target: %s\n", config.Dependency.Target))
 	} else {
-		builder.WriteString(fmt.Sprintf("# Target: %s\n", config.Name.Name))
+		builder.WriteString(fmt.Sprintf("# Target: %s\n", config.Setup.Name))
 	}
 	builder.WriteString("# ==========================================\n\n")
 
 	// Compiler Configuration
 	builder.WriteString("# --- Compiler Configuration ---\n")
-	if config.Name.Compiler != "" {
-		builder.WriteString(fmt.Sprintf("CC = %s\n", config.Name.Compiler))
+	if config.Setup.Compiler != "" {
+		builder.WriteString(fmt.Sprintf("CC = %s\n", config.Setup.Compiler))
 	}
-	if config.Name.Flags != "" {
-		builder.WriteString(fmt.Sprintf("CFLAGS = %s\n", config.Name.Flags))
+	if config.Setup.Flags != "" {
+		builder.WriteString(fmt.Sprintf("CFLAGS = %s\n", config.Setup.Flags))
 	}
 	
 	// Format INCLUDES
@@ -61,7 +61,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 		builder.WriteString(fmt.Sprintf("SRCS = %s\n", strings.Join(processedSources, " ")))
 	}
 
-	if config.Dependency.OFix && len(processedSources) > 0 {
+	if config.Dependency.ObjectDpdcy && len(processedSources) > 0 {
 		builder.WriteString("OBJS = $(SRCS:.c=.o)\n")
 	}
 	builder.WriteString("\n")
@@ -69,7 +69,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	// Target
 	targetName := config.Dependency.Target
 	if targetName == "" {
-		targetName = config.Name.Name
+		targetName = config.Setup.Name
 	}
 	if targetName == "" {
 		targetName = "app"
@@ -82,7 +82,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 
 	// Target rule
 	builder.WriteString("$(TARGET): ")
-	if config.Dependency.OFix {
+	if config.Dependency.ObjectDpdcy {
 		builder.WriteString("$(OBJS)\n")
 	} else {
 		builder.WriteString("$(SRCS)\n")
@@ -94,15 +94,15 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	}
 
 	// Link command
-	if config.Dependency.OFix {
+	if config.Dependency.ObjectDpdcy {
 		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^\n\n")
 	} else {
-		// Just compile directly from sources if OFix is disabled
+		// Just compile directly from sources if ObjectDpdcy is disabled
 		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)\n\n")
 	}
 
-	// Object compilation rule (only if OFix is true)
-	if config.Dependency.OFix {
+	// Object compilation rule (only if ObjectDpdcy is true)
+	if config.Dependency.ObjectDpdcy {
 		builder.WriteString("%.o: %.c\n")
 		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@\n\n")
 	}
@@ -110,7 +110,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	// Clean Rule
 	builder.WriteString("# --- Clean Rule ---\n")
 	builder.WriteString("clean:\n")
-	if config.Dependency.OFix {
+	if config.Dependency.ObjectDpdcy {
 		builder.WriteString("\trm -f $(OBJS) $(TARGET)\n")
 	} else {
 		builder.WriteString("\trm -f $(TARGET)\n")

@@ -9,7 +9,7 @@ Gomake là một trình biên dịch chuyển đổi (transpiler) được viế
 ## Kiến trúc phần mềm
 
 Dự án bao gồm ba thành phần module chính:
-- **Parser (`internal/parser`)**: Phân tích cú pháp tệp `.gomake` theo từng dòng, bỏ qua các đoạn văn bản bắt đầu bằng `//`, trích xuất các khóa và giá trị từ khối `[config.name]` và `[config.dependency]`. Quá trình phân tích sẽ kết thúc ngay khi gặp cờ báo EOF định nghĩa là `./gomake`.
+- **Parser (`internal/parser`)**: Phân tích cú pháp tệp `.gomake` theo từng dòng, bỏ qua các đoạn văn bản bắt đầu bằng `//`, trích xuất các khóa và giá trị từ khối `[config.setup]` và `[config.dependency]`. Quá trình phân tích sẽ kết thúc ngay khi gặp cờ báo EOF định nghĩa là `./gomake`.
 - **Generator (`internal/generator`)**: Tiếp nhận cấu trúc dữ liệu đã phân tích và tạo tệp Makefile. Trình sinh mã thực hiện nối cờ `-I` cho các thư mục `includes` và tự động thiết lập quy tắc liên kết tệp đối tượng (object file linking) thông qua biến `$(OBJS)`.
 - **CLI Router (`main.go`)**: Chịu trách nhiệm phân luồng lệnh thực thi, quản lý quy trình tạo tệp đa luồng (multi-threading) thông qua `sync.WaitGroup` và cung cấp lệnh khởi tạo cấu hình mẫu.
 
@@ -51,15 +51,15 @@ Kích hoạt Goroutines để tìm kiếm và dịch toàn bộ các tệp có �
 
 Cấu trúc định dạng tệp sử dụng các khối logic đặt trong cặp ngoặc vuông. Trình phân tích bảo toàn tính nguyên bản của các tham số (không tự động can thiệp thêm cờ tối ưu như `-O2` nếu không có sẵn).
 
-- `[config.name]`: Lưu trữ cấu hình trình biên dịch, cờ biên dịch và tên dự án.
-- `[config.dependency]`: Lưu trữ cấu hình tệp đích, đường dẫn mã nguồn (hỗ trợ mẫu tìm kiếm đại diện wildcard), đường dẫn thư viện (includes) và thiết lập cơ chế liên kết đối tượng (`o.fix`).
+- `[config.setup]`: Lưu trữ cấu hình trình biên dịch, cờ biên dịch và tên dự án.
+- `[config.dependency]`: Lưu trữ cấu hình tệp đích, đường dẫn mã nguồn (hỗ trợ mẫu tìm kiếm đại diện wildcard), đường dẫn thư viện (includes) và thiết lập cơ chế liên kết đối tượng (`object.dpdcy`).
 - `//`: Chuỗi biểu thị nội dung chú thích.
 - `./gomake`: Ký tự đánh dấu kết thúc tệp cấu hình.
 
 Mẫu định dạng tệp `.gomake`:
 
 ```
-[config.name]
+[config.setup]
 compiler = gcc
 flags = -Wall -Wextra -O2
 name = my_app
@@ -68,7 +68,7 @@ name = my_app
 target = bin/program
 sources = src/main.c src/driver.c
 includes = include/*
-o.fix = yes
+object.dpdcy = yes
 [end]
 ./gomake
 ```

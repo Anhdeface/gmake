@@ -30,3 +30,9 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Custom Ignore
+gomake
+*.makefile
+!build.gomake
+test2.gomake

@@ -12,6 +12,7 @@ type ConfigDependency struct {
 	Includes    []string
 	ObjectDpdcy bool
 	BuildType   string
+	Libs        string
 }
 
 type GomakeConfig struct {

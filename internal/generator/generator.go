@@ -44,6 +44,9 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 		}
 		builder.WriteString(fmt.Sprintf("INCLUDES = %s\n", strings.Join(formattedIncludes, " ")))
 	}
+	if config.Dependency.Libs != "" {
+		builder.WriteString(fmt.Sprintf("LIBS = %s\n", config.Dependency.Libs))
+	}
 	builder.WriteString("\n")
 
 	// Source Files and Objects
@@ -63,7 +66,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	}
 
 	if config.Dependency.ObjectDpdcy && len(processedSources) > 0 {
-		builder.WriteString("OBJS = $(SRCS:.c=.o)\n")
+		builder.WriteString("OBJS = $(addsuffix .o, $(SRCS))\n")
 	}
 	builder.WriteString("\n")
 
@@ -95,6 +98,10 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 	}
 
 	// Link command
+	var libsSuffix string
+	if config.Dependency.Libs != "" {
+		libsSuffix = " $(LIBS)"
+	}
 	switch config.Dependency.BuildType {
 	case "static":
 		if config.Dependency.ObjectDpdcy {
@@ -104,21 +111,23 @@ func GenerateMakefile(config *models.GomakeConfig, outputFilePath string) error 
 		}
 	case "shared":
 		if config.Dependency.ObjectDpdcy {
-			builder.WriteString("\t$(CC) -shared $(CFLAGS) $(INCLUDES) -o $@ $^\n\n")
+			builder.WriteString(fmt.Sprintf("\t$(CC) -shared $(CFLAGS) $(INCLUDES) -o $@ $^%s\n\n", libsSuffix))
 		} else {
-			builder.WriteString("\t$(CC) -shared $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)\n\n")
+			builder.WriteString(fmt.Sprintf("\t$(CC) -shared $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)%s\n\n", libsSuffix))
 		}
 	default: // "executable"
 		if config.Dependency.ObjectDpdcy {
-			builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^\n\n")
+			builder.WriteString(fmt.Sprintf("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^%s\n\n", libsSuffix))
 		} else {
-			builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)\n\n")
+			builder.WriteString(fmt.Sprintf("\t$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(SRCS)%s\n\n", libsSuffix))
 		}
 	}
 
 	// Object compilation rule (only if ObjectDpdcy is true)
 	if config.Dependency.ObjectDpdcy {
-		builder.WriteString("%.o: %.c\n")
+		builder.WriteString("%.c.o: %.c\n")
+		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@\n\n")
+		builder.WriteString("%.cpp.o: %.cpp\n")
 		builder.WriteString("\t$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@\n\n")
 	}
 

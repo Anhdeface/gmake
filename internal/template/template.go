@@ -31,6 +31,9 @@ object.dpdcy =
 
 // build.type: The type of output to build. Expected 'executable', 'static' (e.g., .a), or 'shared' (e.g., .so). Defaults to 'executable'.
 build.type = 
+
+// libs: Linker flags and libraries (e.g., -lm -lpthread -L/usr/lib -lfoo)
+libs = 
 [end]
 
 [config.scripts]

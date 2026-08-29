@@ -145,6 +145,8 @@ func parseConfigDependency(config *models.GomakeConfig, key, val string) error {
 		} else {
 			return fmt.Errorf("invalid build.type '%s', expected 'executable', 'static', or 'shared'", val)
 		}
+	case "libs":
+		config.Dependency.Libs = val
 	default:
 		return fmt.Errorf("unknown variable '%s'", key)
 	}

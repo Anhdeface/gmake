@@ -15,10 +15,10 @@ Dự án bao gồm ba thành phần module chính:
 
 ## Hướng dẫn cài đặt
 
-Thực thi lệnh sau để biên dịch tệp nhị phân từ mã nguồn:
+Bạn chỉ cần chạy tệp script có sẵn để biên dịch tệp nhị phân từ mã nguồn:
 
 ```sh
-go build -o gomake main.go
+./build.sh
 ```
 
 ## Hướng dẫn sử dụng

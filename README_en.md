@@ -15,10 +15,10 @@ The project consists of three main module components:
 
 ## Installation
 
-Run the following command to build the binary from source:
+Simply run the provided bash script to build the binary from source:
 
 ```sh
-go build -o gomake main.go
+./build.sh
 ```
 
 ## Usage

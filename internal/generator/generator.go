@@ -113,6 +113,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputPath string) error {
 
 		if dep.ObjectDpdcy && len(processedSources) > 0 {
 			builder.WriteString(fmt.Sprintf("OBJS_%s = $(addsuffix .%s.o, $(SRCS_%s))\n", c, c, c))
+			builder.WriteString(fmt.Sprintf("DEPS_%s = $(OBJS_%s:.o=.d)\n", c, c))
 		}
 		builder.WriteString("\n")
 
@@ -168,9 +169,12 @@ func GenerateMakefile(config *models.GomakeConfig, outputPath string) error {
 		// Object compilation rule
 		if dep.ObjectDpdcy {
 			builder.WriteString(fmt.Sprintf("%%.c.%s.o: %%.c\n", c))
-			builder.WriteString(fmt.Sprintf("\t$(CC_%s) $(CFLAGS_%s) $(INCLUDES_%s) -c $< -o $@\n\n", c, c, c))
+			builder.WriteString(fmt.Sprintf("\t$(CC_%s) $(CFLAGS_%s) $(INCLUDES_%s) -MMD -MP -c $< -o $@\n\n", c, c, c))
 			builder.WriteString(fmt.Sprintf("%%.cpp.%s.o: %%.cpp\n", c))
-			builder.WriteString(fmt.Sprintf("\t$(CC_%s) $(CFLAGS_%s) $(INCLUDES_%s) -c $< -o $@\n\n", c, c, c))
+			builder.WriteString(fmt.Sprintf("\t$(CC_%s) $(CFLAGS_%s) $(INCLUDES_%s) -MMD -MP -c $< -o $@\n\n", c, c, c))
+			
+			// Include dependencies
+			builder.WriteString(fmt.Sprintf("-include $(DEPS_%s)\n\n", c))
 		}
 	}
 
@@ -184,7 +188,7 @@ func GenerateMakefile(config *models.GomakeConfig, outputPath string) error {
 	for _, c := range config.Constants {
 		dep := config.Dependencies[c]
 		if dep != nil && dep.ObjectDpdcy && len(dep.Sources) > 0 {
-			cleanTargets = append(cleanTargets, fmt.Sprintf("$(OBJS_%s)", c))
+			cleanTargets = append(cleanTargets, fmt.Sprintf("$(OBJS_%s)", c), fmt.Sprintf("$(DEPS_%s)", c))
 		}
 	}
 	cleanTargets = append(cleanTargets, "$(TARGETS)")

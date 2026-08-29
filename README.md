@@ -1,6 +1,6 @@
 # Gomake
 
-**Version: 0.2.0 (Beta)**
+**Version: 0.2.1 (Beta)**
 
 Vietnamese | [English](README_en.md)
 
@@ -8,10 +8,11 @@ Gomake là một trình biên dịch chuyển đổi (transpiler) được viế
 
 ## Kiến trúc phần mềm
 
-Dự án bao gồm ba thành phần module chính:
+Dự án bao gồm bốn thành phần module chính:
 - **Parser (`internal/parser`)**: Phân tích cú pháp tệp `.gomake` theo từng dòng. Quản lý linh hoạt cấu trúc đa mục tiêu thông qua khối `[const]`, bảo lưu khoảng trắng, và chỉ dừng lại khi gặp từ khóa kết thúc `./gomake`.
 - **Generator (`internal/generator`)**: Tiếp nhận cấu trúc dữ liệu và sinh Makefile. Tối ưu hóa việc không xung đột tệp object (Object files conflict) trong dự án đa mục tiêu, tự động nhúng cờ `-MMD -MP` để theo dõi tệp header `.h` thay đổi, và tổ chức gọn gàng các Custom Scripts.
-- **CLI Router (`main.go`)**: Chịu trách nhiệm phân luồng lệnh thực thi, quản lý quy trình tạo tệp đa luồng (multi-threading) thông qua `sync.WaitGroup` và cung cấp lệnh khởi tạo cấu hình mẫu.
+- **Converter (`internal/converter`)**: Bộ phân tích tĩnh (Static Analysis Engine) hoàn toàn độc lập (zero-dependency). Phụ trách đọc và dịch ngược các tệp GNU Makefile truyền thống thành định dạng cấu hình `.gomake` nguyên bản.
+- **CLI Router (`main.go`)**: Chịu trách nhiệm phân luồng lệnh thực thi, quản lý quy trình tạo tệp đa luồng (multi-threading) thông qua `sync.WaitGroup` và cung cấp các lệnh khởi tạo/chuyển đổi cấu hình.
 
 ## Hướng dẫn cài đặt
 
@@ -40,6 +41,13 @@ Tìm kiếm và dịch toàn bộ các tệp `.gomake` trong thư mục hiện t
 ```sh
 ./gomake all
 ```
+
+### 4. Chuyển đổi từ Makefile sang Gomake (Mới trong v0.2.1)
+Dịch ngược một tệp `Makefile` gốc thành tệp cấu hình `.gomake`. Công cụ tiến hành phân tích tĩnh các mục tiêu (targets), biến số (variables), flags và công thức biên dịch để chuyển thành cú pháp của Gomake.
+```sh
+./gomake convert -i Makefile -o build.gomake
+```
+*Lưu ý kỹ thuật:* Trình chuyển đổi xử lý tốt các chức năng cơ bản của Make (khai báo compiler, flags, dependency, và liên kết thư viện). Đối với các Makefile phức tạp (sử dụng hàm động `$(shell)`, `$(eval)` hoặc các luật mẫu ngầm định pattern rules), converter sẽ chủ động bỏ qua (graceful fallback) để đảm bảo tệp `.gomake` sinh ra luôn đơn giản, an toàn và dễ bảo trì.
 
 ## Đặc tả cấu hình (Tính năng Gomake 0.2.0)
 

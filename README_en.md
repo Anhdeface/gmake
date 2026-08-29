@@ -1,6 +1,6 @@
 # Gomake
 
-**Version: 0.2.0 (Beta)**
+**Version: 0.2.1 (Beta)**
 
 [Vietnamese](README.md) | English
 
@@ -8,10 +8,11 @@ Gomake is a transpiler written in Go that parses custom configuration files (`.g
 
 ## Software Architecture
 
-The project consists of three main module components:
+The project consists of four main module components:
 - **Parser (`internal/parser`)**: Parses the `.gomake` file line by line. Flexibly manages multi-target configurations via the `[const]` block, preserves whitespace and script commands, and stops only upon encountering the `./gomake` EOF marker.
 - **Generator (`internal/generator`)**: Consumes the parsed data structures and generates Makefiles. It optimizes multi-target builds by preventing object file conflicts, auto-injects `-MMD -MP` flags for precise `.h` header tracking, and neatly organizes Custom Scripts.
-- **CLI Router (`main.go`)**: Handles command routing, manages multi-threading via `sync.WaitGroup` for bulk processing, and provides a command to generate template configurations.
+- **Converter (`internal/converter`)**: A zero-dependency static analysis engine. It is responsible for parsing traditional GNU Makefiles and translating them natively into the `.gomake` configuration format.
+- **CLI Router (`main.go`)**: Handles command routing, manages multi-threading via `sync.WaitGroup` for bulk processing, and provides commands to generate/convert configurations.
 
 ## Installation
 
@@ -40,6 +41,13 @@ Fires up Goroutines to find and transpile all `.gomake` files in the current dir
 ```sh
 ./gomake all
 ```
+
+### 4. Convert Makefile to Gomake (New in v0.2.1)
+Reverse-engineers an existing `Makefile` into a `.gomake` configuration file. The tool performs static analysis on targets, variables, flags, and recipes, converting them into Gomake's syntax.
+```sh
+./gomake convert -i Makefile -o build.gomake
+```
+*Technical Note:* The converter excels at translating standard Make configurations (compilers, flags, dependencies, libraries). For complex Makefiles (e.g., dynamic `$(shell)`/`$(eval)` functions, heavy pattern rules), the converter applies a graceful fallback strategy, ignoring esoteric elements to ensure the output `.gomake` file remains simple, safe, and maintainable.
 
 ## Configuration Specification (Gomake 0.2.0 Features)
 

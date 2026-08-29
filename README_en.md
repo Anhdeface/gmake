@@ -1,6 +1,6 @@
 # Gomake
 
-**Version: 0.1.1 (Beta)**
+**Version: 0.1.3 (Beta)**
 
 [Vietnamese](README.md) | English
 
